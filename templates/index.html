@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block content %}
+{% set s = sample.summary %}
+{% set i = sample.inputs %}
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <h1>What will this trip cost?</h1>
+      <p class="hero-lead">Pick a bike, scooter, car or electric scooter. Six machine-learning models predict its mileage, then your fuel price turns that into rupees.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="{{ url_for('predict_page') }}">Predict my trip</a>
+        <a class="btn btn-ghost" href="{{ url_for('results_page') }}">See how the models score</a>
+      </div>
+    </div>
+
+    <div class="instrument" id="demo" aria-labelledby="demo-title">
+      <div class="instrument-pad">
+        <p class="instrument-title" id="demo-title">Try it: {{ i.brand }} {{ i.model }}, city riding</p>
+        <div class="odo" id="demo-odo" aria-live="polite"></div>
+        <p class="instrument-sub" id="demo-sub"></p>
+        <svg class="gauge" id="demo-gauge" aria-hidden="true"></svg>
+        <div class="live">
+          <div class="live-box">
+            <div class="row"><label for="demo-km">Trip distance</label><strong id="demo-km-out">{{ i.distance_km|int }} km</strong></div>
+            <input id="demo-km" type="range" min="1" max="200" step="1" value="{{ i.distance_km|int }}">
+          </div>
+          <div class="live-box">
+            <div class="row"><label for="demo-price">Petrol price</label><strong id="demo-price-out">₹{{ i.price|int }} per litre</strong></div>
+            <input id="demo-price" type="range" min="60" max="150" step="1" value="{{ i.price|int }}">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<script type="application/json" id="demo-data">{{ {"real": s.real, "rated": s.rated, "unit": sample.unit, "scale": sample.scale, "efficiency": sample.classification.consensus, "model": s.best_model} | tojson }}</script>
+
+<div class="wrap">
+  <section class="section" aria-labelledby="how">
+    <h2 id="how">How a prediction works</h2>
+    <p class="section-lead">Everything runs on your own computer. Nothing is sent anywhere.</p>
+    <ol class="steps">
+      <li>
+        <h3>Choose your vehicle</h3>
+        <p>Pick a brand and model from the real datasets and its engine specs fill in. Or type your own numbers.</p>
+      </li>
+      <li>
+        <h3>Models predict mileage</h3>
+        <p>Linear, Ridge, Decision Tree, KNN, Random Forest and Gradient Boosting each predict. A second set of six classifiers rates it Thirsty, Balanced or Efficient.</p>
+      </li>
+      <li>
+        <h3>You enter today's price</h3>
+        <p>Type the price at your pump. Cost is distance ÷ real-road mileage × that price.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="section" aria-labelledby="data">
+    <h2 id="data">Trained on real vehicle data</h2>
+    <p class="section-lead">No made-up numbers. Each vehicle type has its own models.</p>
+    <div class="data-tiles">
+      <div class="panel tile">
+        <span class="big num">{{ counts.bike }}</span>
+        <h3>Bikes and scooters</h3>
+        <p>Indian models with engine size, power, torque, gears and listed mileage.</p>
+      </div>
+      <div class="panel tile">
+        <span class="big num">{{ counts.car }}</span>
+        <h3>Cars</h3>
+        <p>The classic Auto-MPG dataset: engine, power, weight and measured fuel economy.</p>
+      </div>
+      <div class="panel tile">
+        <span class="big num">{{ counts.escooter }}</span>
+        <h3>Electric scooters</h3>
+        <p>Battery, motor power, weight and range, converted to kilometres per kWh.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="scores">
+    <h2 id="scores">Best model for each vehicle</h2>
+    <p class="section-lead">Scores come from rows the models never saw during training.</p>
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr><th>Vehicle</th><th>Best regression model</th><th>R²</th><th>Average error</th><th>Best classifier</th><th>Accuracy</th></tr>
+        </thead>
+        <tbody>
+          {% for key, m in metrics.categories.items() %}
+          {% set reg = m.regression.models | selectattr('name', 'equalto', m.regression.best) | first %}
+          {% set clf = m.classification.models | selectattr('name', 'equalto', m.classification.best) | first %}
+          <tr>
+            <td>{{ m.label }}</td>
+            <td class="left">{{ reg.name }}</td>
+            <td>{{ '%.2f' % reg.r2 }}</td>
+            <td>{{ '%.1f' % reg.mae }} {{ m.unit }}</td>
+            <td class="left">{{ clf.name }}</td>
+            <td>{{ '%.0f' % (clf.accuracy * 100) }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="note">R² of 1.00 is a perfect fit. Average error is how far a typical prediction misses the real mileage.</p>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/home.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Predict your trip cost — Delta{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head">
+    <h1>Predict your trip cost</h1>
+    <p>Choose a vehicle, say how you ride, and enter today's fuel price.</p>
+  </div>
+
+  <div class="studio">
+    <form id="predict-form" class="panel studio-form" novalidate>
+      <section class="fieldset-block" aria-labelledby="h-vehicle">
+        <h2 id="h-vehicle">Vehicle</h2>
+        <fieldset>
+          <legend class="sr-only">Vehicle type</legend>
+          <div class="seg seg-icons" id="vehicle-seg">
+            <input type="radio" name="vehicle" id="v-bike" value="bike" checked>
+            <label for="v-bike">
+              <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="20" r="3.6"/><circle cx="22" cy="20" r="3.6"/><path d="M6 20l5-9h7l4 9M11 11l-1.5-3H7M18 11l1-3h3.5M10 16h8"/></svg>
+              Bike or scooter
+            </label>
+            <input type="radio" name="vehicle" id="v-car" value="car">
+            <label for="v-car">
+              <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 19v-4.5l2.6-5.5h16.8l2.6 5.5V19M3 19h22M3 14.5h22"/><circle cx="8" cy="19.5" r="2.4" fill="var(--surface)"/><circle cx="20" cy="19.5" r="2.4" fill="var(--surface)"/></svg>
+              Car
+            </label>
+            <input type="radio" name="vehicle" id="v-escooter" value="escooter">
+            <label for="v-escooter">
+              <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="21" r="3"/><circle cx="23" cy="21" r="3"/><path d="M6 21h11l4-14M18 7h6M15 14l3 7"/></svg>
+              Electric scooter
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="brand">Brand</label>
+            <select id="brand" name="brand"></select>
+          </div>
+          <div class="field">
+            <label for="model">Model</label>
+            <select id="model" name="model"></select>
+          </div>
+        </div>
+        <div class="field" id="brand-other-wrap" hidden>
+          <label for="brand-other">Your brand</label>
+          <input id="brand-other" type="text" maxlength="40" autocomplete="off" placeholder="For example Maruti">
+          <p class="hint">The models have not seen this brand, so they use the specs below.</p>
+        </div>
+        <div class="listed-note" id="listed-note" hidden></div>
+
+        <div>
+          <p class="label" id="specs-label">Specifications</p>
+          <div class="grid-3" id="specs" role="group" aria-labelledby="specs-label"></div>
+        </div>
+        <div class="grid-2" id="choices"></div>
+      </section>
+
+      <section class="fieldset-block" aria-labelledby="h-ride">
+        <h2 id="h-ride">How you ride</h2>
+        <div class="grid-2">
+          <div class="field">
+            <label for="fuel">Fuel</label>
+            <select id="fuel" name="fuel"></select>
+          </div>
+          <fieldset class="field">
+            <legend>Road</legend>
+            <div class="seg" id="road-seg">
+              <input type="radio" name="road_type" id="r-city" value="city" checked><label for="r-city">City</label>
+              <input type="radio" name="road_type" id="r-mixed" value="mixed"><label for="r-mixed">Mixed</label>
+              <input type="radio" name="road_type" id="r-highway" value="highway"><label for="r-highway">Highway</label>
+            </div>
+          </fieldset>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="load_kg">Rider and load weight</label>
+            <div class="affix"><input id="load_kg" name="load_kg" type="number" inputmode="numeric" min="0" max="600" step="1" value="70"><span class="affix-text">kg</span></div>
+          </div>
+          <div class="field">
+            <label for="vehicle_age">Vehicle age</label>
+            <div class="affix"><input id="vehicle_age" name="vehicle_age" type="number" inputmode="numeric" min="0" max="30" step="1" value="2"><span class="affix-text">years</span></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <label class="check" id="ac-wrap"><input type="checkbox" id="ac_on"> Air conditioning on</label>
+          <label class="check"><input type="checkbox" id="service_overdue"> Service is overdue</label>
+        </div>
+      </section>
+
+      <section class="fieldset-block" aria-labelledby="h-trip">
+        <h2 id="h-trip">Trip and fuel price</h2>
+        <div class="grid-2">
+          <div class="field">
+            <label for="distance_km">Trip distance</label>
+            <div class="affix"><input id="distance_km" name="distance_km" type="number" inputmode="decimal" min="0.5" max="5000" step="any" value="20" required><span class="affix-text">km</span></div>
+            <div class="chips" id="distance-chips">
+              <button class="chip" type="button" data-km="5">5 km</button>
+              <button class="chip" type="button" data-km="10">10 km</button>
+              <button class="chip" type="button" data-km="25">25 km</button>
+              <button class="chip" type="button" data-km="100">100 km</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="price" id="price-label">Petrol price</label>
+            <div class="affix"><span class="affix-text pre">₹</span><input id="price" name="price" type="number" inputmode="decimal" min="0.5" max="300" step="any" required aria-describedby="price-hint"><span class="affix-text" id="price-unit">per litre</span></div>
+            <p class="hint" id="price-hint">Type today's price from your pump.</p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="days_per_month">Days per month you make this trip</label>
+          <div class="affix"><input id="days_per_month" name="days_per_month" type="number" inputmode="numeric" min="1" max="31" step="1" value="26"><span class="affix-text">days</span></div>
+          <p class="hint">Used for the monthly and yearly estimate. Treat the distance above as one day's riding.</p>
+        </div>
+        <div class="form-error" id="form-error" role="alert" hidden></div>
+        <button class="btn btn-primary btn-block" id="submit" type="submit">Predict trip cost</button>
+      </section>
+    </form>
+
+    <aside class="studio-result" id="result-area" aria-live="polite" aria-label="Prediction result"></aside>
+  </div>
+</div>
+
+<script type="application/json" id="config-data">{{ config | tojson }}</script>
+<script type="application/json" id="catalog-data">{{ catalog | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/predict.js') }}"></script>
+{% endblock %}

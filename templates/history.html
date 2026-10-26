@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}History — Delta{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head">
+    <h1>History</h1>
+    <p>Your last 50 predictions, saved on this computer.</p>
+  </div>
+
+  {% if rows %}
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr><th>When</th><th>Vehicle</th><th>Road</th><th>Distance</th><th>Fuel price</th><th>Real mileage</th><th>Class</th><th>Trip cost</th></tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="left">{{ r.created_at }}</td>
+          <td class="left">{{ r.brand }} {{ r.model if r.model != 'Custom' else '' }}</td>
+          <td class="left">{{ r.road_type|capitalize }}</td>
+          <td>{{ '%g' % r.distance_km }} km</td>
+          <td>{{ r.price|inr(2) }}</td>
+          <td>{{ '%.1f' % r.mileage }} {{ r.unit }}</td>
+          <td class="left"><span class="pill pill-{{ r.efficiency|lower }}">{{ r.efficiency }}</span></td>
+          <td><strong>{{ r.cost|inr(2) }}</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <form method="post" action="{{ url_for('history_clear') }}" class="hero-actions">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button class="btn btn-danger" type="submit">Clear history</button>
+  </form>
+  {% else %}
+  <div class="panel empty-state">
+    <h2>No predictions yet</h2>
+    <p>Predict a trip and it will be listed here.</p>
+    <a class="btn btn-primary" href="{{ url_for('predict_page') }}">Predict a trip</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

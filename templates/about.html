@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}About — Delta{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head">
+    <h1>About this project</h1>
+    <p>The problem, the data, how the models work and what they cannot do.</p>
+  </div>
+
+  <div class="prose">
+    <img class="logo-light logo-tag" src="{{ url_for('static', filename='brand/delta-lockup-tagline-color.svg') }}" alt="Delta: Know the difference." width="242" height="95">
+    <img class="logo-dark logo-tag" src="{{ url_for('static', filename='brand/delta-lockup-tagline-dark.svg') }}" alt="" width="242" height="95" aria-hidden="true">
+
+    <h2>Why it is called Delta</h2>
+    <p>Δ is the maths symbol for difference, and every screen here is about one: the brochure mileage against the real-road mileage, one model's prediction against another's, the training score against the test score, city riding against highway riding, and one fuel against another. The logo shows it too. A solid triangle is the number you are told, and the coral sliver beside it is the gap.</p>
+
+    <h2>The problem</h2>
+    <p>Brochure mileage is rarely what you get on the road, and fuel prices change often. Most people cannot easily tell what a trip will cost. Delta predicts a vehicle's mileage from its specifications and turns it into a rupee cost for the distance and fuel price you enter.</p>
+
+    <h2>The data</h2>
+    <p>Three real datasets are used, one per vehicle type. Two of the files you might expect to use were left out on purpose.</p>
+  </div>
+  <div class="table-wrap source-table">
+    <table class="data">
+      <thead><tr><th>File</th><th>What it became</th></tr></thead>
+      <tbody>
+        <tr><td>Bike_Features.csv</td><td>Bikes and scooters: {{ metrics.categories.bike.rows }} models after removing colour variants. Specs and mileage were parsed out of the file, because many rows have shifted columns.</td></tr>
+        <tr><td>mpg_raw.csv, auto-mpg.csv</td><td>Cars: {{ metrics.categories.car.rows }} petrol cars. The two files hold the same data. Miles per gallon is converted to km/l.</td></tr>
+        <tr><td>Electric scooter - dataset.xlsx</td><td>Electric scooters: {{ metrics.categories.escooter.rows }} models. Efficiency is range ÷ battery kWh, in km/kWh.</td></tr>
+        <tr><td>bike_sales_india.csv</td><td>Not used. Engine size, fuel and mileage are unrelated to the model name (the Bajaj CT 100 appears with engines from 109 to 996 cc, and "Electric" bikes have a km/l figure), so it looks randomly generated.</td></tr>
+        <tr><td>CAR DETAILS FROM CAR DEKHO.csv</td><td>Not used. It has prices and kilometres driven, but no mileage or engine data.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose">
+    <h2>The pipeline</h2>
+    <ul>
+      <li>Split the rows 80% to learn and 20% to test.</li>
+      <li>Fill gaps with the median, scale numbers and one-hot encode brand and type.</li>
+      <li>Train six regression models for mileage and six classification models for the efficiency class.</li>
+      <li>Score on the test rows and with 5-fold cross-validation. Permutation importance shows which inputs matter.</li>
+    </ul>
+
+    <h2>From rated mileage to your trip cost</h2>
+    <p>The datasets list rated mileage, so that is what the models predict. Real roads differ. The multipliers below are assumptions, not learned from data. You can change them in <code>features.py</code>.</p>
+    <ul>
+      <li>Road: city ×{{ road.city }}, mixed ×{{ road.mixed }}, highway ×{{ road.highway }}</li>
+      <li>Extra weight lowers mileage by {{ (cars.car.load_penalty * 100)|round|int }}% per 100 kg for cars and {{ (cars.bike.load_penalty * 100)|round|int }}% for bikes</li>
+      <li>Age: {{ (age_penalty * 1000)|round / 10 }}% per year, up to 15 years. Overdue service ×{{ service }}. Car air conditioning ×{{ ac }}</li>
+      <li>Cars run on petrol in the data. Diesel is ×{{ fuel_factor.diesel }} and CNG ×{{ fuel_factor.cng }}, as estimates.</li>
+    </ul>
+    <p>Trip cost = distance ÷ real-road mileage × the fuel price you type.</p>
+
+    <h2>Limits</h2>
+    <ul>
+      <li>The car data is from 1970–82 vehicles. Modern cars are usually more efficient than the numbers shown.</li>
+      <li>Bike mileage is the listed figure, not measured on a road.</li>
+      <li>The electric scooter set is small (42 models), and these are kick-scooter style vehicles. Treat those predictions as rough.</li>
+      <li>Fuel prices are never fetched online. You enter them, so the cost is only as current as the price you type.</li>
+    </ul>
+
+    <h2>Future scope</h2>
+    <ul>
+      <li>Add newer car data with Indian models and CNG variants.</li>
+      <li>Learn the road and load effects from logged trips instead of assuming them.</li>
+      <li>Fetch fuel prices by city.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

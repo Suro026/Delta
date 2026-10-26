@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Model results — Delta{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head">
+    <h1>Model results</h1>
+    <p>Every model, scored on rows it never saw while learning. Pick a vehicle type to compare all twelve models with charts.</p>
+  </div>
+
+  <div class="seg vehicle-tabs" id="vehicle-tabs" role="tablist" aria-label="Vehicle type">
+    {% for key, m in metrics.categories.items() %}
+      <input type="radio" name="vt" id="vt-{{ key }}" value="{{ key }}" {% if loop.first %}checked{% endif %}>
+      <label for="vt-{{ key }}">{{ m.label }}</label>
+    {% endfor %}
+  </div>
+
+  {% for key, m in metrics.categories.items() %}
+  {% set reg = m.regression %}
+  {% set clf = m.classification %}
+  {% set best_r = reg.models | selectattr('name', 'equalto', reg.best) | first %}
+  {% set best_c = clf.models | selectattr('name', 'equalto', clf.best) | first %}
+  <section class="vehicle-pane" id="pane-{{ key }}" data-key="{{ key }}" {% if not loop.first %}hidden{% endif %} aria-label="{{ m.label }} results">
+
+    <div class="stat-grid">
+      <div class="panel stat"><span class="big num">{{ m.rows }}</span><span>vehicles in the data ({{ m.train_rows }} to learn, {{ m.test_rows }} to test)</span></div>
+      <div class="panel stat"><span class="big num">{{ '%.2f' % best_r.r2 }}</span><span>R² of the best regressor, {{ reg.best }}</span></div>
+      <div class="panel stat"><span class="big num">{{ '%.1f' % best_r.mae }} <small>{{ m.unit }}</small></span><span>typical error of that model</span></div>
+      <div class="panel stat"><span class="big num">{{ '%.0f' % (best_c.accuracy * 100) }}%</span><span>accuracy of the best classifier, {{ clf.best }}</span></div>
+    </div>
+
+    <div class="block">
+      <h2>Predicting mileage (regression)</h2>
+      <p>Each model predicts the mileage in {{ m.unit }}. R² closer to 1 and a smaller error are better. The best model is the one with the highest cross-validated R², which is steadier than one test split.</p>
+      <div class="why-best">
+        <strong>Why {{ reg.best }} is marked best.</strong>
+        It has the highest cross-validated R² ({{ '%.3f' % reg.models[0].cv_r2 }}), which averages five different train/test splits instead of trusting one.
+        {% if reg.models | length > 1 %}The runner-up, {{ reg.models[1].name }}, scores {{ '%.3f' % reg.models[1].cv_r2 }}, so the top models are close and the winner can change if the data changes.{% endif %}
+        Train R² is how well a model fits the rows it learned from. Test R² is how well it does on new rows. A big gap between them means the model memorised its training data.
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <caption class="sr-only">Regression models for {{ m.label }}</caption>
+          <thead><tr><th>Model</th><th>Train R²</th><th>Test R²</th><th>Gap</th><th>Cross-validated R²</th><th>MAE</th><th>RMSE</th><th>Fit time</th></tr></thead>
+          <tbody>
+            {% for r in reg.models %}
+            <tr {% if r.name == reg.best %}class="best"{% endif %}>
+              <td>{{ r.name }}{% if r.name == reg.best %} <span class="pill pill-best">Best</span>{% endif %}</td>
+              <td>{{ '%.3f' % r.train_r2 }}</td>
+              <td>{{ '%.3f' % r.r2 }}</td>
+              <td>{{ '%+.2f' % (r.r2 - r.train_r2) }}</td>
+              <td>{{ '%.3f' % r.cv_r2 }} ± {{ '%.2f' % r.cv_std }}</td>
+              <td>{{ '%.2f' % r.mae }}</td>
+              <td>{{ '%.2f' % r.rmse }}</td>
+              <td>{{ '%.2f' % r.fit_seconds }} s</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="chart-grid">
+        <div class="panel chart-card"><h3>Train and test score of every model</h3><p>R² on training rows, on test rows and across 5 folds. A big drop from train to test means overfitting.</p><div class="chart-box"><canvas id="{{ key }}-r2" role="img" aria-label="R squared of each regression model"></canvas></div></div>
+        <div class="panel chart-card"><h3>Error of every model</h3><p>MAE and RMSE in {{ m.unit }}. Lower is better.</p><div class="chart-box"><canvas id="{{ key }}-err" role="img" aria-label="MAE and RMSE of each regression model"></canvas></div></div>
+        <div class="panel chart-card"><h3>Training time</h3><p>Seconds to fit each model.</p><div class="chart-box"><canvas id="{{ key }}-time" role="img" aria-label="Training time of each model"></canvas></div></div>
+      </div>
+
+      <h3 class="sub-head">Actual against predicted, model by model</h3>
+      <p class="muted small">Each dot is a test vehicle. Dots on the dashed line were predicted exactly.</p>
+      <div class="chart-grid">
+        {% for r in reg.models %}
+        <div class="panel chart-card">
+          <h3>{{ r.name }}{% if r.name == reg.best %} <span class="pill pill-best">Best</span>{% endif %}</h3>
+          <p>R² {{ '%.2f' % r.r2 }}, error {{ '%.1f' % r.mae }} {{ m.unit }}</p>
+          <div class="chart-box short"><canvas id="{{ key }}-sc-{{ loop.index0 }}" role="img" aria-label="Actual against predicted mileage for {{ r.name }}"></canvas></div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="panel chart-card wide">
+        <div class="chart-head">
+          <div><h3>What each model relies on</h3><p>How much its score drops when one input is shuffled.</p></div>
+          <div class="field compact">
+            <label for="{{ key }}-imp-select">Model</label>
+            <select id="{{ key }}-imp-select">
+              {% for r in reg.models %}<option value="{{ r.name }}" {% if r.name == reg.best %}selected{% endif %}>{{ r.name }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="chart-box"><canvas id="{{ key }}-imp" role="img" aria-label="Importance of each input for the chosen model"></canvas></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h2>Rating efficiency (classification)</h2>
+      <p>The vehicles are split into three equal groups: Thirsty below {{ m.thresholds[0] }} {{ m.unit }}, Efficient above {{ m.thresholds[1] }} {{ m.unit }}, Balanced in between. Each classifier predicts the group. The best one is picked by cross-validated accuracy, so it can differ from the winner on the single test split.</p>
+      <div class="table-wrap">
+        <table class="data">
+          <caption class="sr-only">Classification models for {{ m.label }}</caption>
+          <thead><tr><th>Model</th><th>Train accuracy</th><th>Test accuracy</th><th>Gap</th><th>Precision</th><th>Recall</th><th>F1</th><th>Cross-validated accuracy</th></tr></thead>
+          <tbody>
+            {% for r in clf.models %}
+            <tr {% if r.name == clf.best %}class="best"{% endif %}>
+              <td>{{ r.name }}{% if r.name == clf.best %} <span class="pill pill-best">Best</span>{% endif %}</td>
+              <td>{{ '%.1f' % (r.train_accuracy * 100) }}%</td>
+              <td>{{ '%.1f' % (r.accuracy * 100) }}%</td>
+              <td>{{ '%+.0f' % ((r.accuracy - r.train_accuracy) * 100) }} pts</td>
+              <td>{{ '%.2f' % r.precision }}</td>
+              <td>{{ '%.2f' % r.recall }}</td>
+              <td>{{ '%.2f' % r.f1 }}</td>
+              <td>{{ '%.1f' % (r.cv_accuracy * 100) }}% ± {{ '%.1f' % (r.cv_std * 100) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="chart-grid two">
+        <div class="panel chart-card"><h3>Train and test score, every classifier</h3><p>Train accuracy, test accuracy, precision, recall, F1 and cross-validated accuracy.</p><div class="chart-box tall"><canvas id="{{ key }}-clf" role="img" aria-label="Scores of each classifier"></canvas></div></div>
+        <div class="panel chart-card"><h3>Shape of each classifier</h3><p>A bigger shape means better on all five scores.</p><div class="chart-box tall"><canvas id="{{ key }}-radar" role="img" aria-label="Radar chart of classifier scores"></canvas></div></div>
+      </div>
+
+      <h3 class="sub-head">Where each classifier goes wrong</h3>
+      <p class="muted small">Rows are the true group, columns are the prediction. A strong diagonal is good.</p>
+      <div class="chart-grid">
+        {% for r in clf.models %}
+        <div class="panel chart-card">
+          <h3>{{ r.name }}{% if r.name == clf.best %} <span class="pill pill-best">Best</span>{% endif %}</h3>
+          <p>Accuracy {{ '%.0f' % (r.accuracy * 100) }}%</p>
+          <table class="matrix" data-matrix='{{ clf.confusion.all[r.name] | tojson }}'>
+            <thead><tr><th></th>{% for l in clf.confusion.labels %}<th scope="col">{{ l }}</th>{% endfor %}</tr></thead>
+            <tbody>
+              {% for row in clf.confusion.all[r.name] %}
+              {% set ri = loop.index0 %}
+              <tr><th scope="row">{{ clf.confusion.labels[ri] }}</th>{% for v in row %}<td>{{ v }}</td>{% endfor %}</tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endfor %}
+</div>
+
+<script type="application/json" id="metrics-data">{{ {"metrics": metrics.categories, "names": names} | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.js') }}"></script>
+<script src="{{ url_for('static', filename='js/results.js') }}"></script>
+{% endblock %}
