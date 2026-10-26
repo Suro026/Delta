@@ -8,6 +8,7 @@ import json
 import os
 import secrets
 import sqlite3
+import tempfile
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
@@ -32,9 +33,15 @@ from features import (
 ROOT = Path(__file__).parent
 MODEL_DIR = ROOT / "models"
 DATA_DIR = ROOT / "data"
-DB_PATH = ROOT / "milemind.db"
+# On Vercel the project folder is read-only and only /tmp can be written, so the history
+# database lives there (it is cleared when the serverless instance is recycled).
+if os.environ.get("VERCEL"):
+    DB_PATH = Path(tempfile.gettempdir()) / "milemind.db"
+else:
+    DB_PATH = ROOT / "milemind.db"
 
-app = Flask(__name__)
+# Static files sit in public/static so Vercel serves them from its CDN; the URL stays /static/...
+app = Flask(__name__, static_folder=str(ROOT / "public" / "static"), static_url_path="/static")
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
 

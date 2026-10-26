@@ -12,7 +12,7 @@ py app.py
 
 Open http://127.0.0.1:5000
 
-The first run trains all 36 models (about a minute). After that it starts instantly.
+The 36 trained models are included in `models/`, so it starts instantly. (If that folder is deleted, the first run trains them again in about a minute.)
 
 To rebuild the data and retrain: `py build_dataset.py` then `py train.py`
 
@@ -64,6 +64,17 @@ features.py       Vehicle types, feature lists and the real-world multipliers
 build_dataset.py  Cleans data/raw/* into data/bikes.csv, cars.csv, escoot.csv
 train.py          Trains and compares the 36 models, writes models/metrics.json
 templates/        HTML pages
-static/           CSS, JS, bundled fonts and Chart.js (works offline)
-models/           Saved models and metrics.json
+public/static/    CSS, JS, logo, bundled fonts and Chart.js (works offline)
+models/           Saved models and metrics.json (kept in the repo so deployment does not need to train)
 ```
+
+## Deploy on Vercel
+
+1. Import the repository in Vercel. The framework preset is **Flask** and the root directory is `./`.
+2. Add an environment variable `SECRET_KEY` (any long random text). Without it every cold start gets a new key.
+3. Deploy.
+
+Notes for Vercel:
+- The entry point is `app.py` (the `app` variable). `.python-version` selects Python 3.13 and `requirements.txt` pins the versions the models were trained with.
+- Static files are in `public/static`, which Vercel serves from its CDN.
+- The project folder is read-only on Vercel, so the history database is written to `/tmp`. History therefore resets when the serverless instance is recycled. Run the app locally for a permanent history.

@@ -7,9 +7,6 @@ venv/
 # Local database of predictions (created on first run)
 milemind.db
 
-# Trained models are rebuilt on first run (about a minute): python train.py
-models/
-
 # Report and logo archive are kept outside the repository
 Delta_Project_Report.docx
 delta-logo.zip
